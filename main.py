@@ -29,7 +29,7 @@ def run_bot():
     
     # Using the flash model for speed and low cost
     model = genai.GenerativeModel(
-        model_name='gemini-2.0-flash-exp', 
+        model_name='gemini-1.5-flash', 
         system_instruction=GEM_INSTRUCTIONS
     )
     
