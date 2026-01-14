@@ -39,7 +39,7 @@ def run_bot():
     
     # We use the standard stable model (no experimental/beta tools)
     model = genai.GenerativeModel(
-        model_name='gemini-1.5-flash', 
+        model_name='gemini-2.5-flash', 
         system_instruction=GEM_INSTRUCTIONS
     )
     
