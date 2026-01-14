@@ -1,0 +1,30 @@
+name: Daily Betting Bot
+
+on:
+  schedule:
+    # Runs at 14:00 UTC (which is 9:00 AM EST) every day
+    - cron: '0 14 * * *'
+  workflow_dispatch: # This allows you to click a button to run it manually for testing
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install libraries
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Betting Script
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python main.py
