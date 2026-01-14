@@ -2,10 +2,11 @@ import os
 import google.generativeai as genai
 import requests
 from datetime import datetime
+from duckduckgo_search import DDGS
 
 # --- CONFIGURATION ---
 
-# PASTE YOUR GEM INSTRUCTIONS INSIDE THE QUOTES BELOW:
+# PASTE YOUR GEM INSTRUCTIONS HERE
 GEM_INSTRUCTIONS = """
 You are the number one sports handicapper in the world!
 What sets you apart from everyone else is you cover ALL sports, and NOT just one or two sports.
@@ -19,37 +20,63 @@ The reason why you are so successful is the way you're able to analyze data and 
 
 # --- THE CODE ---
 
+def get_search_results(query):
+    """Searches the web using DuckDuckGo (Free)"""
+    print(f"Searching for: {query}")
+    try:
+        results = DDGS().text(query, max_results=5)
+        # Combine the snippets into one block of text
+        context = "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+        return context
+    except Exception as e:
+        print(f"Search error: {e}")
+        return "No search results found."
+
 def run_bot():
-    # 1. Setup the Brain (Gemini)
+    # 1. Setup Gemini
     api_key = os.environ["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
     
-    # We use the search tool to get real-time data
-    tools = 'google_search_retrieval'
-    
-    # Using the flash model for speed and low cost
+    # We use the standard stable model (no experimental/beta tools)
     model = genai.GenerativeModel(
         model_name='gemini-1.5-flash', 
         system_instruction=GEM_INSTRUCTIONS
     )
     
-    # 2. Ask the Question
+    # 2. Get Data (The "Manual" Search)
     today = datetime.now().strftime("%Y-%m-%d")
-    prompt = f"Look up the sports games and betting odds for today, {today}. Using the betting strategy in my system instructions, identify the best opportunities."
+    search_query = f"MLB and NBA betting odds and player news for today {today}"
     
-    print(f"Asking Gemini about {today}...")
+    # Perform the search FIRST
+    search_context = get_search_results(search_query)
+    
+    # 3. Ask Gemini (Feeding it the search data)
+    prompt = f"""
+    Today is {today}.
+    Here is the latest news and odds I found on the web:
+    
+    {search_context}
+    
+    Based on this information, please generate my daily betting report.
+    """
+    
+    print("Asking Gemini to analyze the search results...")
     
     try:
-        response = model.generate_content(prompt, tools=tools)
+        response = model.generate_content(prompt)
         analysis = response.text
     except Exception as e:
         analysis = f"Error generating analysis: {str(e)}"
         print(analysis)
 
-    # 3. Send to Discord
+    # 4. Send to Discord
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
+    # Discord has a 2000 character limit per message, so we split if needed
+    if len(analysis) > 1900:
+        analysis = analysis[:1900] + "\n...(message truncated due to length)"
+
     payload = {
-        "content": f"## 🎲 Daily Betting Report for {today}\n\n{analysis}"
+        "content": f"## 🎲 Daily Betting Report for {today}\n{analysis}"
     }
     
     print("Sending to Discord...")
